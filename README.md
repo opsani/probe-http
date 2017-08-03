@@ -1,5 +1,5 @@
 # probe-http
-The http probe calls a REST API over http/https on component instances.  The typical use is to perform an HTTP GET to verify a resource is obtainable through a component's service network in order to validate the deployment of that component.  The http probe can also be used to verify a REST API exposed by a component is functional to perform a similar validation.
+The http probe calls a REST API over http/https on component instances.  The typical use is to perform an http health check on a component's service network.  The http probe can also be used to verify a REST API exposed by a component on the same network which is used to consume that service.
 
 The http probe supports the following actions:
 
@@ -12,10 +12,10 @@ These actions support the following arguments:
 
 * `schema` - URL schema to use: `http` (default) or `https`
 * `port` - port number, default is based on schema (`80` for http, `443` for https)
-* `path` - URL path relative to host; e.g., 'healthz' or '/healthz'; '/' is allowed but not required (default '/')
+* `path` - URL path relative to host; e.g., `healthz` or `/healthz`; `/` is allowed but not required (default `/`)
 * `data` - string containing JSON data to pass on POST (default: no data)
-* `ok_codes` - comma-separated list of status codes to be considered ok (e.g., "200,404"). If empty, the standard OK codes are assumed.  This option is *ignored* by the `service_up` action.
-* `timeout` - operation timeout *per service instance*, in seconds (default 120):
+* `ok_codes` - comma-separated list of status codes to be considered ok (e.g., `"200,404"`). If empty, the standard OK codes are assumed.  This option is *ignored* by the `service_up` action.
+* `timeout` - operation timeout *per service instance*, in seconds (default `120`):
     * for `get` and `post`: maximum time to connect and get the first response byte
     * for `get_ok` and `service_up`: how long to keep retrying to get any of the ok_codes (success)
 
