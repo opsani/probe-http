@@ -1,0 +1,233 @@
+'''
+Copyright (c) 2017, Opsani
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGE.
+
+License template: http://opensource.org/licenses/BSD-2-Clause
+                  (as accessed on June 2, 2015)
+
+probe-http - probe for calling REST API over http/https to assess instance(s)
+
+use:
+    get <args>...
+    post <args>...
+    get_ok <args>...
+    service_up <args>... (an alias for get_ok with ok codes 2x, 3x, 4x)
+
+arguments:
+    schema   - "http" (default) or "https"
+    host     - host name or IP address (use {{.id}} in model steps; required
+    port     - port number, default is based on schema (80 for http, 443 for https)
+    path     - URL path relative to host; e.g., 'healthz' or '/healthz'; '/' is
+               allowed but not required (default '/')
+    data     - string containing JSON data to pass on POST (default: no data)
+    ok_codes - comma-separated list of status codes to be considered ok (e.g.,
+               "200,404"). If empty, the standard OK codes are assumed
+    timeout  - operation timeout (default 120):
+                  - for get and post: time to connect/get the first response byte
+                  - for get_ok: how long to keep retrying to get any of the
+                    ok_codes (success)
+
+examples (in Skopos model form):
+
+    - probe:
+        image: opsani/probe-http:v1
+
+    - probe:
+        image: opsani/probe-http:v1
+        action: get
+        label: "check health over https"
+        arguments: { schema: "https", path: "/healthz" }
+
+    - probe:
+        image: opsani/probe-http:v1
+        action: get
+        label: "check health on alternate port"
+        arguments: { port: 8080, path: "/healthz" }
+
+    - probe:
+        image: opsani/probe-http:v1
+        action: get
+        label: "check for any response with short timeout"
+        arguments: { path: "/anypath", ok_codes: "200,404", timeout: 5 }
+
+    - probe:
+        image: opsani/probe-http:v1
+        action: post
+        label: "enter maintance mode"  # using POST and post data (JSON-encoding)
+        arguments: { port: 8080, path: "/admin/maintenance_mode", data: '{ "value":"1" }' }
+
+    - probe:
+        image: opsani/probe-http:v1
+        action: get_ok
+        label: "wait until health check OK, retrying with timeout"
+        arguments: { port: 8080, path: "/healthz", timeout: 300 }
+
+test - command line, same arguments:
+   Free REST API testing:
+       curl https://jsonplaceholder.typicode.com/posts
+       curl https://jsonplaceholder.typicode.com/posts/1
+       curl https://jsonplaceholder.typicode.com/nosuchpage
+       curl -H "Content-Type: application/json" -X POST --data '{ "title" : "foo" }' https://jsonplaceholder.typicode.com/posts
+'''
+from __future__   import print_function
+from probe_common import skpp
+from probe_common import probe
+
+import requests
+import sys
+
+# === definitions
+
+_dflt_timeout    = 120          # default action timeout in seconds
+_dflt_schema     = 'http'       # default request schema
+_connect_timeout = 10           # connect timeout in seconds
+
+# === operations
+
+def _request(method, host, schema=_dflt_schema, port=None, path=None, data=None,
+    ok_codes=None, timeout=_dflt_timeout, **dummy):
+
+    # parse OK status code overrides to a set
+    if ok_codes is not None and ok_codes != 'service_up':
+        ok_codes = probe.parse_intlist(ok_codes)
+
+    # construct url
+    url = '{schema}://{host}'.format(schema=schema, host=host)
+    if port:
+        url += ':{port}'.format(port=port)
+    if not path or not path.startswith('/'):  # unless there is a path and it starts with '/'
+        url += '/'
+    if path:
+        url += path
+
+    # form content header if needed
+    if data:
+        headers = { 'Content-Type' : 'application/json' } # TODO: add support for others
+    else:
+        headers = None
+
+    # make the request
+    try:
+        r = requests.request(method, url, data=data, headers=headers, timeout=int(timeout))
+    except Exception as e:
+        raise probe.UserError('{} request to {} failed:  {}'.format(method, url, e))
+
+    # decide if the operation should be considered successful
+    if ok_codes == 'service_up':
+        ok = r.status_code >= 200 and r.status_code <= 499
+    elif ok_codes:
+        ok = r.status_code in ok_codes
+    else:
+        ok = r.ok   # whatever requests considers a success (e.g., all 2xx)
+
+    # fail action if the status did not match the success criteria
+    if not ok:
+        raise probe.UserError('{} request to {} failed:  {} {}'.format(
+            method, url, r.status_code, r.text ))
+
+    return
+
+# === action handlers
+
+def _get(project, inst=[], **args):
+    # execute for each instance (no op if no instances, fail on first failure)
+    for i in inst:
+        _request("GET", probe.extract_ip(i), **args)
+    return
+
+def _post(project, inst=[], **args):
+    # execute for each instance (no op if no instances, fail on first failure)
+    for i in inst:
+        _request("POST", probe.extract_ip(i), **args)
+    return
+
+def _get_ok(project, inst=[], **args):
+    # execute for each instance (no op if no instances, fail on first failure)
+    op_timeout = args.get('timeout', _dflt_timeout)
+    args['timeout'] = _connect_timeout
+    for i in inst:
+        probe.wait_retry_op(op_timeout,
+            lambda: _request(method="GET", host=probe.extract_ip(i), **args))
+    return
+
+# === Skopos plugin action wrappers
+
+@skpp.action
+def get(**args):
+    try:
+        _get(**args)
+    except (probe.UserError, probe.UserValidationError) as e:
+        print('Error:', str(e), file=sys.stderr)
+        sys.exit(1)
+    return args
+
+@skpp.action
+def post(**args):
+    try:
+        _get(**args)
+    except (probe.UserError, probe.UserValidationError) as e:
+        print('Error:', str(e), file=sys.stderr)
+        sys.exit(1)
+    return args
+
+@skpp.action
+def get_ok(**args):
+    try:
+        _get_ok(**args)
+    except (probe.UserError, probe.UserValidationError) as e:
+        print('Error:', str(e), file=sys.stderr)
+        sys.exit(1)
+    return args
+
+@skpp.action
+def service_up(**args):
+    try:
+        args['ok_codes'] = 'service_up'
+        _get_ok(**args)
+    except (probe.UserError, probe.UserValidationError) as e:
+        print('Error:', str(e), file=sys.stderr)
+        sys.exit(1)
+    return args
+
+# === for command-line use
+
+@skpp.cmd
+def GET(**args):
+    return _request("GET", **args)
+
+@skpp.cmd
+def POST(**args):
+    return _request("POST", **args)
+
+@skpp.cmd
+def GET_OK(**args):
+    op_timeout = args.get('timeout', _dflt_timeout)
+    args['timeout'] = _connect_timeout
+    return probe.wait_retry_op(op_timeout, lambda: _request(method="GET", **args))
+
+# === Main
+
+if __name__ == "__main__":
+    skpp.run('probe-http', globals())
