@@ -21,7 +21,7 @@ These actions support the following arguments:
 
 ## examples
 
-Here are a few examples in the form of quality gates specified in a Skopos TED file (target environment descriptor).  Quality gates associate probe actions to one or more component images.  During application deployment Skopos executes the specified probes to assess components deployed with matching images.
+Here are a few examples in the form of quality gates specified in a Skopos TED file (target environment descriptor).  Quality gates associate probe executions to one or more component images.  During application deployment Skopos executes the specified probes to assess components deployed with matching images.
 
 ```yaml
 quality_gates:
@@ -30,7 +30,7 @@ quality_gates:
             - opsani/websrv:*
         steps:
 
-            # verify http service using default action service_up
+            # verify http service is up (default action service_up)
             - probe: opsani/probe-http:v1
 
             # examples of various health checks
