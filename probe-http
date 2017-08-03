@@ -102,7 +102,7 @@ import sys
 
 _dflt_timeout    = 120          # default action timeout in seconds
 _dflt_schema     = 'http'       # default request schema
-_connect_timeout = 10           # connect timeout in seconds
+_connect_timeout = 2            # connect timeout in seconds
 
 # === operations
 
