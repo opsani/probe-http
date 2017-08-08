@@ -15,7 +15,7 @@ These actions support the following arguments:
 * `path` - URL path relative to host; e.g., `healthz` or `/healthz`; `/` is allowed but not required (default `/`)
 * `data` - string containing JSON data to pass on POST (default: no data)
 * `ok_codes` - comma-separated list of status codes to be considered ok (e.g., `"200,404"`). If empty, the standard OK codes are assumed.  This option is *ignored* by the `service_up` action.
-* `timeout` - operation timeout *per service instance*, in seconds (default `120`):
+* `timeout` - operation timeout *per service instance*, in seconds (default `30`):
     * for `get` and `post`: maximum time to connect and get the first response byte
     * for `get_ok` and `service_up`: how long to keep retrying to get any of the ok_codes (success)
 
@@ -53,5 +53,5 @@ quality_gates:
                 image: opsani/probe-http:v1
                 action: get_ok
                 label: "wait until health check OK, retrying with timeout"
-                arguments: { port: 8080, path: "/healthz", timeout: 30 }
+                arguments: { port: 8080, path: "/healthz", timeout: 15 }
 ```
