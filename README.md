@@ -19,6 +19,8 @@ These actions support the following arguments:
     * for `get` and `post`: maximum time to connect and get the first response byte
     * for `get_ok` and `service_up`: how long to keep retrying to get any of the ok_codes (success)
 
+Docker Hub repository:  <https://hub.docker.com/r/opsani/probe-http/>
+
 ## examples
 
 Here are a few examples in the form of quality gates specified in a Skopos TED file (target environment descriptor).  Quality gates associate probe executions to one or more component images.  During application deployment Skopos executes the specified probes to assess components deployed with matching images.
@@ -31,26 +33,26 @@ quality_gates:
         steps:
 
             # verify http service is up (default action service_up)
-            - probe: opsani/probe-http:v1
+            - probe: opsani/probe-http
 
             # examples of various health checks
             - probe:
-                image: opsani/probe-http:v1
+                image: opsani/probe-http
                 action: get
                 label: "check health over https"
                 arguments: { schema: "https", path: "/healthz" }
             - probe:
-                image: opsani/probe-http:v1
+                image: opsani/probe-http
                 action: get
                 label: "check health on alternate port"
                 arguments: { port: 8080, path: "/healthz" }
             - probe:
-                image: opsani/probe-http:v1
+                image: opsani/probe-http
                 action: service_up
                 label: "check for any response with short timeout"
                 arguments: { timeout: 5 }
             - probe:
-                image: opsani/probe-http:v1
+                image: opsani/probe-http
                 action: get_ok
                 label: "wait until health check OK, retrying with timeout"
                 arguments: { port: 8080, path: "/healthz", timeout: 15 }
