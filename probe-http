@@ -128,9 +128,13 @@ def _request(method, host, schema=_dflt_schema, port=None, path=None, data=None,
     else:
         headers = None
 
+    # do not follow re-directs if checking explicitly for service_up
+    redirect = False if ok_codes == 'service_up' else True
+
     # make the request
     try:
-        r = requests.request(method, url, data=data, headers=headers, timeout=int(timeout))
+        r = requests.request(method, url, data=data, headers=headers,
+            timeout=int(timeout), allow_redirects=redirect)
     except Exception as e:
         raise probe.UserError('{} request to {} failed:  {}'.format(method, url, e))
 
