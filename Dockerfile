@@ -1,15 +1,20 @@
-# minimial apline linux with python 3.5:  ~64 MB
-FROM jfloff/alpine-python:latest-slim
-MAINTAINER Stephen Quintero <stephen@opsani.com>
+FROM alpine:latest
+
+LABEL maintainer "Opsani <support@opsani.com>"
 
 WORKDIR /skopos
 
-# Install curl and python requests
-USER root
-RUN apk add --update curl py3-requests
-RUN pip install --upgrade pip
+RUN set -x && \
+    apk update && \
+    apk upgrade && \
+    apk add --update --no-cache \
+        ca-certificates \
+        python3 \
+        py3-requests && \
+    rm -rf /var/cache/apk/*
 
 COPY probe-http /skopos/
+
 ADD probe_common /skopos/probe_common
 
 ENTRYPOINT [ "python3", "probe-http" ]
