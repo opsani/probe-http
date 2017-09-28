@@ -185,7 +185,7 @@ def get(**args):
     except (probe.UserError, probe.UserValidationError) as e:
         print('Error:', str(e), file=sys.stderr)
         sys.exit(1)
-    return args
+    return {}
 
 @skpp.action
 def post(**args):
@@ -194,7 +194,7 @@ def post(**args):
     except (probe.UserError, probe.UserValidationError) as e:
         print('Error:', str(e), file=sys.stderr)
         sys.exit(1)
-    return args
+    return {}
 
 @skpp.action
 def get_ok(**args):
@@ -203,7 +203,7 @@ def get_ok(**args):
     except (probe.UserError, probe.UserValidationError) as e:
         print('Error:', str(e), file=sys.stderr)
         sys.exit(1)
-    return args
+    return {}
 
 @skpp.action
 def service_up(**args):
@@ -213,7 +213,7 @@ def service_up(**args):
     except (probe.UserError, probe.UserValidationError) as e:
         print('Error:', str(e), file=sys.stderr)
         sys.exit(1)
-    return args
+    return {}
 
 # === for command-line use
 
