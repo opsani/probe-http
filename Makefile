@@ -6,7 +6,7 @@ PROBE     = http
         push
 
 all:
-	docker build -f Dockerfile -t ${REPO}/probe-${PROBE}:${IMAGE_TAG} .
+	docker build --no-cache --pull -t ${REPO}/probe-${PROBE}:${IMAGE_TAG} .
 
 push:
 	docker push ${REPO}/probe-${PROBE}:${IMAGE_TAG}
